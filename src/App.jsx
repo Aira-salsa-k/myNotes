@@ -1,10 +1,10 @@
-import BookshelfFeature from "./feature/bookshelf/BookshelfFeature";
+import GoalPlannerFeature from "./feature/bookshelf/GoalPlannerFeature";
 import "./App.css";
 
 function App() {
   return (
     <>
-      <BookshelfFeature />
+      <GoalPlannerFeature />
     </>
   );
 }

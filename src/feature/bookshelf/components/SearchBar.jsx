@@ -1,10 +1,10 @@
 import React from "react";
-import { useBookStore } from "../stores/useBookStore";
+import { useGoalStore } from "../stores/useGoalStore";
 import { Search } from "lucide-react";
 
 export function SearchBar() {
-  const searchQuery = useBookStore((state) => state.searchQuery);
-  const setSearchQuery = useBookStore((state) => state.setSearchQuery);
+  const searchQuery = useGoalStore((state) => state.searchQuery);
+  const setSearchQuery = useGoalStore((state) => state.setSearchQuery);
 
   return (
     <div className="relative group w-full md:max-w-md">
@@ -16,8 +16,8 @@ export function SearchBar() {
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full pl-11 pr-4 py-2 bg-white/5 border border-white/10 focus:outline-none rounded-full focus:ring-1 focus:ring-teal-500/50 focus:border-teal-500/50 focus:bg-white/10 text-sm text-white placeholder-gray-500 transition-all"
-        placeholder="Quick search..."
+        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 focus:outline-none rounded-2xl focus:ring-1 focus:ring-teal-500/50 focus:border-teal-500/50 focus:bg-white/10 text-sm text-white placeholder-gray-500 transition-all"
+        placeholder="Cari goal/tugas..."
       />
     </div>
   );
