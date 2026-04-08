@@ -53,7 +53,7 @@ export const GoalCard = ({ goal, onEdit, isDragging, isOverlay }) => {
 
       {/* Category Label */}
       <div
-        className={`absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium 
+        className={`absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold jakarta-text tracking-wide 
         ${
           goal.isComplete
             ? "border-white/5 text-gray-700 bg-white/5"
@@ -68,7 +68,7 @@ export const GoalCard = ({ goal, onEdit, isDragging, isOverlay }) => {
       <div className="mt-7 flex flex-col gap-1.5">
         <div className="flex items-start justify-between gap-2">
           <h3
-            className={`text-sm font-bold leading-snug pr-4 ${goal.isComplete ? "text-gray-700 line-through" : "text-white"}`}
+            className={`text-sm font-bold leading-snug pr-4 jakarta-text ${goal.isComplete ? "text-gray-700 line-through" : "text-white"}`}
           >
             {goal.title}
           </h3>
@@ -76,7 +76,7 @@ export const GoalCard = ({ goal, onEdit, isDragging, isOverlay }) => {
 
         {goal.description && (
           <p
-            className={`text-xs leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all ${goal.isComplete ? "text-gray-800" : "text-gray-500"}`}
+            className={`text-xs leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all jakarta-text ${goal.isComplete ? "text-gray-800" : "text-gray-500"}`}
           >
             {goal.description}
           </p>

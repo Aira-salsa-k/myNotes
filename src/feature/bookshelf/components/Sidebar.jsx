@@ -6,8 +6,13 @@ import {
   LayoutGrid,
   ListTodo,
   Target,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useGoalStore } from "../stores/useGoalStore";
+import { useAuthStore } from "../../auth/stores/useAuthStore";
+import { GridPattern } from "../../../components/ui/grid-pattern";
+import { cn } from "../../../lib/utils";
 
 export const Sidebar = () => {
   const {
@@ -16,6 +21,7 @@ export const Sidebar = () => {
     selectedTimeframe,
     setSelectedTimeframe,
   } = useGoalStore();
+  const { user, logout } = useAuthStore();
 
   const timeframes = [
     { id: "Yearly", icon: <Target size={20} />, label: "Tahun Ini" },
@@ -34,7 +40,16 @@ export const Sidebar = () => {
       <div
         className={`absolute top-0 left-0 w-full h-full bg-[#0b0b0b] border-r border-white/5 flex flex-col transition-all duration-500 ease-in-out overflow-hidden shadow-2xl ${isSidebarOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-full pointer-events-none"}`}
       >
-        <div className="p-6 flex flex-col gap-8 h-full">
+        <GridPattern
+          width={65}
+          height={65}
+          strokeDasharray={"2 2"}
+          className={cn(
+            "[mask-image:linear-gradient(to_top,transparent,white_20%,white_20%,transparent)]",
+            "opacity-22",
+          )}
+        />
+        <div className="p-6 flex flex-col gap-8 h-full relative z-10">
           <div className="flex flex-col gap-2">
             <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
               Timeframe Planner
@@ -49,10 +64,10 @@ export const Sidebar = () => {
               <button
                 key={tf.id}
                 onClick={() => setSelectedTimeframe(tf.id)}
-                className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all border whitespace-nowrap ${
+                className={`flex items-center gap-4 px-5 py-5 rounded-lg transition-all border whitespace-nowrap ${
                   selectedTimeframe === tf.id
-                    ? "bg-lime-300/10 border-lime-300/30 text-lime-300 shadow-[0_0_20px_rgba(190,242,100,0.1)]"
-                    : "bg-white/5 border-transparent text-gray-400 hover:bg-white/10"
+                    ? "bg-lime-300/10 border-lime-300/40 text-lime-300 shadow-[0_0_30px_rgba(190,242,100,0.15)]"
+                    : "bg-white/[0.03] border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
                 }`}
               >
                 <span
@@ -64,23 +79,73 @@ export const Sidebar = () => {
                 >
                   {tf.icon}
                 </span>
-                <span className="font-semibold text-sm">{tf.label}</span>
+                <span className="font-bold text-sm tracking-tight">
+                  {tf.label}
+                </span>
               </button>
             ))}
           </nav>
 
-          <div className="mt-auto p-5 rounded-3xl bg-gradient-to-br from-teal-500/10 to-transparent border border-white/5">
-            <p className="text-[10px] text-gray-500 font-medium">STATISTIK</p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white">45%</span>
-              <span className="text-xs text-lime-300 font-bold whitespace-nowrap">
-                Goal Tercapai
-              </span>
+          {/* Dynamic Statistics */}
+          {(() => {
+            const timeframeGoals = useGoalStore
+              .getState()
+              .goals.filter((g) => g.timeframe === selectedTimeframe);
+            const completedCount = timeframeGoals.filter(
+              (g) => g.isComplete,
+            ).length;
+            const totalCount = timeframeGoals.length;
+            const percentage =
+              totalCount > 0
+                ? Math.round((completedCount / totalCount) * 100)
+                : 0;
+
+            return (
+              <div className="mt-auto p-5 rounded-3xl bg-gradient-to-br from-teal-500/10 to-transparent border border-white/5">
+                <p className="text-[10px] text-gray-500 font-medium">
+                  STATISTIK {selectedTimeframe.toUpperCase()}
+                </p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-white">
+                    {percentage}%
+                  </span>
+                  <span className="text-xs text-lime-300 font-bold whitespace-nowrap">
+                    Goal Tercapai
+                  </span>
+                </div>
+                <div className="mt-3 w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-lime-300 transition-all duration-1000 ease-out"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <p className="text-[9px] text-gray-600 mt-2 font-medium">
+                  {completedCount} dari {totalCount} target selesai
+                </p>
+              </div>
+            );
+          })()}
+
+          {user && (
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-full bg-lime-300/10 flex items-center justify-center text-lime-300">
+                  <User size={16} />
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-xs font-bold text-white truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-bold"
+              >
+                <LogOut size={16} /> Keluar
+              </button>
             </div>
-            <div className="mt-3 w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-lime-300 w-[45%]" />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

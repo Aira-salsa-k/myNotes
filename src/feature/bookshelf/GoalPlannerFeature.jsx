@@ -5,11 +5,15 @@ import { GoalList } from "./components/GoalList";
 import { Sidebar } from "./components/Sidebar";
 import { Target, Plus } from "lucide-react";
 import { useGoalStore } from "./stores/useGoalStore";
+import { GridPattern } from "../../components/ui/grid-pattern";
+import { Footer } from "../../components/ui/footer";
+import { cn } from "../../lib/utils";
 
 export default function GoalPlannerFeature() {
   const [editingGoal, setEditingGoal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isSidebarOpen, selectedTimeframe, setSidebarOpen } = useGoalStore();
+  const { isSidebarOpen, selectedTimeframe, setSidebarOpen, isGoalsLoading } =
+    useGoalStore();
 
   const handleEdit = (goal) => {
     setEditingGoal(goal);
@@ -28,22 +32,31 @@ export default function GoalPlannerFeature() {
 
   return (
     <div
-      className="bg-[#0b0b0b] min-h-screen text-white font-inter relative pb-20 overflow-x-hidden selection:bg-lime-500/30 selection:text-lime-200"
+      className="bg-[#0b0b0b] min-h-screen text-white relative overflow-x-hidden selection:bg-lime-500/30 selection:text-lime-200"
       onClick={() => isSidebarOpen && setSidebarOpen(false)}
     >
       <Sidebar />
 
-      {/* Background Glows */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-0 -translate-x-1/3 -translate-y-1/3 w-[400px] h-[250px] bg-gradient-to-tr from-lime-500 via-lime-300 to-white opacity-20 blur-[70px] rounded-[40%]"></div>
-        <div className="absolute top-1/2 right-0 transform -translate-y-[30%] translate-x-1/2 w-[400px] h-[250px] bg-gradient-to-tr from-lime-500 via-lime-300 to-white opacity-20 blur-[70px] rounded-[30%]"></div>
+      {/* Background Patterns & Glows */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <GridPattern
+          width={60}
+          height={60}
+          strokeDasharray={"4 4"}
+          className={cn(
+            "[mask-image:linear-gradient(to_right,white,transparent_50%,white)]",
+            "opacity-20",
+          )}
+        />
+        {/* Background Glows */}
+        <div className="absolute top-0 left-0 -translate-x-1/3 -translate-y-1/3 w-[400px] h-[250px] bg-gradient-to-tr from-lime-500 via-lime-300 to-white opacity-15 blur-[70px] rounded-[40%]"></div>
+        <div className="absolute bottom-1/20 right-0 transform -translate-y-[20%] translate-x-1/2 w-[200px] h-[250px] bg-gradient-to-tr from-lime-500 via-lime-300 to-white opacity-8 blur-[70px] rounded-[100%]"></div>
       </div>
-
       {/* Header */}
       <header
-        className={`sticky top-0 z-40 bg-[#0b0b0b]/60 backdrop-blur-xl border-b border-white/5 transition-all duration-500 ease-in-out w-full ${isSidebarOpen ? "pl-80" : "pl-0"}`}
+        className={`sticky top-0 z-40 bg-[#0b0b0b]/60 backdrop-blur-xl border-b border-white/5 transition-all duration-500 ease-in-out w-full overflow-hidden ${isSidebarOpen ? "pl-80" : "pl-0"}`}
       >
-        <div className="max-w-[1600px] mx-auto px-6 py-6 font-bold">
+        <div className="max-w-[1600px] mx-auto px-6 py-6 font-bold relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
             <h1 className="text-3xl font-black flex items-center gap-3">
               <Target className="text-lime-300 animate-pulse" size={32} />
@@ -83,10 +96,18 @@ export default function GoalPlannerFeature() {
             <div className="h-px bg-white/10 flex-grow"></div>
           </div>
           <div id="library" className="flex-col ">
-            <GoalList onEdit={handleEdit} />
+            {isGoalsLoading ? (
+              <div className="w-full flex items-center justify-center py-20">
+                <div className="animate-spin h-8 w-8 border-b-2 border-lime-300 rounded-full"></div>
+              </div>
+            ) : (
+              <GoalList onEdit={handleEdit} />
+            )}
           </div>
         </div>
       </main>
+
+      <Footer />
 
       {/* Modal Overlay */}
       {isModalOpen && (

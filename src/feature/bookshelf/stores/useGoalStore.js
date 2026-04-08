@@ -1,89 +1,187 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  serverTimestamp,
+  writeBatch,
+} from "firebase/firestore";
+import { db, auth } from "../../../lib/firebase";
 
-const DUMMY_GOALS = [
-  {
-    id: 1,
-    title: "Selesaikan Projek Skripsi",
-    description: "Menyelesaikan Bab 4 dan 5 sebelum sidang akhir.",
-    category: "Kuliah",
-    timeframe: "Yearly",
-    isComplete: false,
-    createdAt: new Date().toISOString(),
+export const UNASSIGNED_PERIOD = "Unassigned";
+
+export const TIMEFRAME_PERIODS = {
+  Yearly: [],
+  Monthly: [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ],
+  Weekly: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"],
+  Daily: ["Pagi", "Siang", "Sore", "Malam"],
+};
+
+export const useGoalStore = create((set, get) => ({
+  goals: [],
+  searchQuery: "",
+  selectedTimeframe: "Daily",
+  selectedYear: new Date().getFullYear(),
+  isSidebarOpen: true,
+  isGoalsLoading: true,
+  unsubscribeGoals: null,
+
+  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+  setSelectedTimeframe: (timeframe) => set({ selectedTimeframe: timeframe }),
+  setSelectedYear: (year) => set({ selectedYear: year }),
+
+  initializeGoals: () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(collection(db, "goals"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const goalsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      // Sort by orderIndex if needed, or by createdAt
+      goalsData.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+      set({ goals: goalsData, isGoalsLoading: false });
+    });
+
+    set({ unsubscribeGoals: unsubscribe });
   },
-  {
-    id: 2,
-    title: "Belajar Next.js",
-    description: "Mempelajari App Router dan Server Actions.",
-    category: "Kerjaan",
-    timeframe: "Monthly",
-    isComplete: true,
-    createdAt: new Date().toISOString(),
+
+  clearGoals: () => {
+    const { unsubscribeGoals } = get();
+    if (unsubscribeGoals) unsubscribeGoals();
+    set({ goals: [], unsubscribeGoals: null, isGoalsLoading: true });
   },
-  {
-    id: 3,
-    title: "Beres-beres Gudang",
-    description: "Memilah barang yang sudah tidak terpakai.",
-    category: "Rumahan",
-    timeframe: "Weekly",
-    isComplete: false,
-    createdAt: new Date().toISOString(),
+
+  addGoal: async (goal) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const newGoal = {
+      ...goal,
+      userId: user.uid,
+      period: goal.period || UNASSIGNED_PERIOD,
+      targetYear: goal.targetYear || get().selectedYear,
+      createdAt: new Date().toISOString(),
+      orderIndex: get().goals.length, // initial order
+    };
+
+    // Optimistic UI
+    const tempId = Date.now().toString();
+    set((state) => ({ goals: [...state.goals, { id: tempId, ...newGoal }] }));
+
+    try {
+      await addDoc(collection(db, "goals"), newGoal);
+    } catch (error) {
+      console.error("Error adding goal:", error);
+    }
   },
-  {
-    id: 4,
-    title: "Workout 30 Menit",
-    description: "Cardio dan light strength training.",
-    category: "Rumahan",
-    timeframe: "Daily",
-    isComplete: true,
-    createdAt: new Date().toISOString(),
+
+  updateGoal: async (id, updatedGoal) => {
+    // Optimistic UI
+    set((state) => ({
+      goals: state.goals.map((goal) =>
+        goal.id === id ? { ...goal, ...updatedGoal } : goal,
+      ),
+    }));
+
+    try {
+      const goalRef = doc(db, "goals", id);
+      await updateDoc(goalRef, updatedGoal);
+    } catch (error) {
+      console.error("Error updating goal:", error);
+    }
   },
-];
 
-export const useGoalStore = create(
-  persist(
-    (set) => ({
-      goals: DUMMY_GOALS,
-      searchQuery: "",
-      selectedTimeframe: "Daily",
-      isSidebarOpen: true,
+  updateGoalPeriod: async (id, newPeriod) => {
+    // Optimistic UI
+    set((state) => ({
+      goals: state.goals.map((goal) =>
+        goal.id === id ? { ...goal, period: newPeriod } : goal,
+      ),
+    }));
 
-      setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
-      setSelectedTimeframe: (timeframe) =>
-        set({ selectedTimeframe: timeframe }),
+    try {
+      const goalRef = doc(db, "goals", id);
+      await updateDoc(goalRef, { period: newPeriod });
+    } catch (error) {
+      console.error("Error updating goal period:", error);
+    }
+  },
 
-      addGoal: (goal) =>
-        set((state) => ({
-          goals: [
-            ...state.goals,
-            { ...goal, id: Date.now(), createdAt: new Date().toISOString() },
-          ],
-        })),
+  deleteGoal: async (id) => {
+    // Optimistic UI
+    set((state) => ({
+      goals: state.goals.filter((goal) => goal.id !== id),
+    }));
 
-      updateGoal: (id, updatedGoal) =>
-        set((state) => ({
-          goals: state.goals.map((goal) =>
-            goal.id === id ? { ...goal, ...updatedGoal } : goal,
-          ),
-        })),
+    try {
+      const goalRef = doc(db, "goals", id);
+      await deleteDoc(goalRef);
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+    }
+  },
 
-      deleteGoal: (id) =>
-        set((state) => ({
-          goals: state.goals.filter((goal) => goal.id !== id),
-        })),
+  toggleGoalStatus: async (id) => {
+    const goal = get().goals.find((g) => g.id === id);
+    if (!goal) return;
 
-      toggleGoalStatus: (id) =>
-        set((state) => ({
-          goals: state.goals.map((goal) =>
-            goal.id === id ? { ...goal, isComplete: !goal.isComplete } : goal,
-          ),
-        })),
+    const newStatus = !goal.isComplete;
 
-      setGoals: (newGoals) => set({ goals: newGoals }),
-      setSearchQuery: (query) => set({ searchQuery: query }),
-    }),
-    {
-      name: "GOAL_PLANNER",
-    },
-  ),
-);
+    // Optimistic UI
+    set((state) => ({
+      goals: state.goals.map((g) =>
+        g.id === id ? { ...g, isComplete: newStatus } : g,
+      ),
+    }));
+
+    try {
+      const goalRef = doc(db, "goals", id);
+      await updateDoc(goalRef, { isComplete: newStatus });
+    } catch (error) {
+      console.error("Error toggling goal status:", error);
+    }
+  },
+
+  setGoals: async (newGoals) => {
+    // Optimistic Reordering UI
+    set({ goals: newGoals });
+
+    // Batch update orderIndex in Firestore
+    try {
+      const batch = writeBatch(db);
+      newGoals.forEach((goal, index) => {
+        if (!goal.id.includes(Date.now().toString().slice(0, 5))) {
+          // Avoid updating temp IDs
+          const goalRef = doc(db, "goals", goal.id);
+          batch.update(goalRef, { orderIndex: index });
+        }
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error reordering goals:", error);
+    }
+  },
+
+  setSearchQuery: (query) => set({ searchQuery: query }),
+}));

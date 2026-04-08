@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-title: "Host Grotesk", sans-serif;
+}
+
+@layer base {
+  html,
+  body {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    @apply bg-[#0b0b0b] text-gray-200 antialiased;
+  }
+
+  /* Global headers use Host Grotesk */
+  h1,
+  h2,
+  .app-title {
+    font-family: "Host Grotesk", sans-serif !important;
+  }
+}
+
+/* Explicit class for Goal Card content to use Jakarta Sans */
+.jakarta-text {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
+
+/* Specific override for h3 inside GoalCard if needed */
+h3.jakarta-text {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
+
+/* Custom scrollbar matching the dark theme */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
