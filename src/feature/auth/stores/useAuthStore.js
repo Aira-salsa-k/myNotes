@@ -5,8 +5,12 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInWithPopup,
+  GoogleAuthProvider,
 } from "firebase/auth";
 import { auth } from "../../../lib/firebase";
+
+const googleProvider = new GoogleAuthProvider();
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -36,6 +40,16 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  loginWithGoogle: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       set({ error: error.message, isLoading: false });
       throw error;

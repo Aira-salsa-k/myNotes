@@ -4,15 +4,19 @@ import { SearchBar } from "./components/SearchBar";
 import { GoalList } from "./components/GoalList";
 import { Sidebar } from "./components/Sidebar";
 import { Target, Plus } from "lucide-react";
+import { PomodoroSummary } from "./components/PomodoroSummary";
+import { PomodoroTimer } from "./components/PomodoroTimer";
+import { DailyRoutine } from "./components/DailyRoutine";
 import { useGoalStore } from "./stores/useGoalStore";
 import { GridPattern } from "../../components/ui/grid-pattern";
+import { LoadingState } from "./components/LoadingState";
 import { Footer } from "../../components/ui/footer";
 import { cn } from "../../lib/utils";
 
 export default function GoalPlannerFeature() {
   const [editingGoal, setEditingGoal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isSidebarOpen, selectedTimeframe, setSidebarOpen, isGoalsLoading } =
+  const { isSidebarOpen, selectedTimeframe, setSidebarOpen, isGoalsLoading, currentView } =
     useGoalStore();
 
   const handleEdit = (goal) => {
@@ -37,6 +41,14 @@ export default function GoalPlannerFeature() {
     >
       <Sidebar />
 
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-all duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Background Patterns & Glows */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <GridPattern
@@ -45,7 +57,7 @@ export default function GoalPlannerFeature() {
           strokeDasharray={"4 4"}
           className={cn(
             "[mask-image:linear-gradient(to_right,white,transparent_50%,white)]",
-            "opacity-20",
+            "opacity-55",
           )}
         />
         {/* Background Glows */}
@@ -54,12 +66,17 @@ export default function GoalPlannerFeature() {
       </div>
       {/* Header */}
       <header
-        className={`sticky top-0 z-40 bg-[#0b0b0b]/60 backdrop-blur-xl border-b border-white/5 transition-all duration-500 ease-in-out w-full overflow-hidden ${isSidebarOpen ? "pl-80" : "pl-0"}`}
+        className={`sticky top-0 z-40 bg-[#0b0b0b]/60 backdrop-blur-xl border-b border-white/5 transition-all duration-500 ease-in-out w-full overflow-hidden ${isSidebarOpen ? "lg:pl-80 pl-0" : "pl-0"}`}
       >
         <div className="max-w-[1600px] mx-auto px-6 py-6 font-bold relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
             <h1 className="text-3xl font-black flex items-center gap-3">
-              <Target className="text-lime-300 animate-pulse" size={32} />
+              {/* <Target className="text-lime-300 animate-pulse" size={32} /> */}
+              <img
+                className="h-10 mix-blend-screen"
+                src="/web-app-manifest-512x512.png"
+                alt=""
+              />
               <div className="flex flex-col leading-tight">
                 <span className="text-white text-2xl font-bold tracking-tight">
                   Goal
@@ -70,15 +87,19 @@ export default function GoalPlannerFeature() {
               </div>
             </h1>
             <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-              <div className="w-full md:w-auto min-w-[300px]">
-                <SearchBar />
-              </div>
-              <button
-                onClick={handleAdd}
-                className="w-full md:w-auto hover:bg-lime-300 hover:text-black transition-all bg-lime-300/10 text-lime-300 px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold border border-lime-300/20 whitespace-nowrap shadow-lg shadow-lime-300/5 hover:shadow-lime-300/20"
-              >
-                <Plus size={18} /> Tambah Goal Baru
-              </button>
+              {currentView === "planner" && (
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                  <div className="w-full md:w-auto min-w-[300px]">
+                    <SearchBar />
+                  </div>
+                  <button
+                    onClick={handleAdd}
+                    className="w-full md:w-auto hover:bg-lime-300 hover:text-black transition-all bg-lime-300/10 text-lime-300 px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold border border-lime-300/20 whitespace-nowrap shadow-lg shadow-lime-300/5 hover:shadow-lime-300/20"
+                  >
+                    <Plus size={18} /> Tambah Goal Baru
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -86,27 +107,34 @@ export default function GoalPlannerFeature() {
 
       {/* Main Content */}
       <main
-        className={`transition-all duration-500 ease-in-out py-12 relative z-10 w-full ${isSidebarOpen ? "pl-80" : "pl-0"}`}
+        className={`transition-all duration-500 ease-in-out py-12 relative z-10 w-full ${isSidebarOpen ? "lg:pl-80 pl-0" : "pl-0"}`}
       >
         <div className="max-w-[1600px] mx-auto px-6">
-          <div className="mb-12 flex items-center gap-4">
-            <span className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-lime-300 uppercase tracking-widest">
-              {selectedTimeframe} Mode
-            </span>
-            <div className="h-px bg-white/10 flex-grow"></div>
-          </div>
-          <div id="library" className="flex-col ">
-            {isGoalsLoading ? (
-              <div className="w-full flex items-center justify-center py-20">
-                <div className="animate-spin h-8 w-8 border-b-2 border-lime-300 rounded-full"></div>
+          {currentView === "pomodoro" ? (
+            <PomodoroSummary />
+          ) : currentView === "routine" ? (
+            <DailyRoutine />
+          ) : (
+            <>
+              <div className="mb-12 flex items-center gap-4">
+                <span className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-lime-300 uppercase tracking-widest">
+                  {selectedTimeframe} Mode
+                </span>
+                <div className="h-px bg-white/10 flex-grow"></div>
               </div>
-            ) : (
-              <GoalList onEdit={handleEdit} />
-            )}
-          </div>
+              <div id="library" className="flex-col ">
+                {isGoalsLoading ? (
+                  <LoadingState message="Menyiapkan Targetmu" />
+                ) : (
+                  <GoalList onEdit={handleEdit} />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
 
+      <PomodoroTimer />
       <Footer />
 
       {/* Modal Overlay */}

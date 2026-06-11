@@ -40,12 +40,14 @@ export const useGoalStore = create((set, get) => ({
   searchQuery: "",
   selectedTimeframe: "Daily",
   selectedYear: new Date().getFullYear(),
+  currentView: "routine", // "planner", "pomodoro" or "routine"
   isSidebarOpen: true,
   isGoalsLoading: true,
   unsubscribeGoals: null,
 
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
-  setSelectedTimeframe: (timeframe) => set({ selectedTimeframe: timeframe }),
+  setSelectedTimeframe: (timeframe) => set({ selectedTimeframe: timeframe, currentView: "planner" }),
+  setCurrentView: (view) => set({ currentView: view }),
   setSelectedYear: (year) => set({ selectedYear: year }),
 
   initializeGoals: () => {
@@ -67,9 +69,18 @@ export const useGoalStore = create((set, get) => ({
   },
 
   clearGoals: () => {
-    const { unsubscribeGoals } = get();
+    const { unsubscribeGoals, unsubscribeCategories } = get();
     if (unsubscribeGoals) unsubscribeGoals();
-    set({ goals: [], unsubscribeGoals: null, isGoalsLoading: true });
+    if (unsubscribeCategories) unsubscribeCategories();
+    set({ 
+      goals: [], 
+      categories: [],
+      unsubscribeGoals: null, 
+      unsubscribeCategories: null,
+      isGoalsLoading: true,
+      isCategoriesLoading: true,
+      hasSeededCategories: false
+    });
   },
 
   addGoal: async (goal) => {
@@ -97,16 +108,27 @@ export const useGoalStore = create((set, get) => ({
   },
 
   updateGoal: async (id, updatedGoal) => {
+    const currentGoal = get().goals.find((g) => g.id === id);
+    let finalUpdatedGoal = { ...updatedGoal };
+
+    if (currentGoal && updatedGoal.timeframe && updatedGoal.timeframe !== currentGoal.timeframe) {
+      const allowedPeriods = TIMEFRAME_PERIODS[updatedGoal.timeframe] || [];
+      const currentPeriod = updatedGoal.period || currentGoal.period;
+      if (currentPeriod !== UNASSIGNED_PERIOD && !allowedPeriods.includes(currentPeriod)) {
+        finalUpdatedGoal.period = UNASSIGNED_PERIOD;
+      }
+    }
+
     // Optimistic UI
     set((state) => ({
       goals: state.goals.map((goal) =>
-        goal.id === id ? { ...goal, ...updatedGoal } : goal,
+        goal.id === id ? { ...goal, ...finalUpdatedGoal } : goal,
       ),
     }));
 
     try {
       const goalRef = doc(db, "goals", id);
-      await updateDoc(goalRef, updatedGoal);
+      await updateDoc(goalRef, finalUpdatedGoal);
     } catch (error) {
       console.error("Error updating goal:", error);
     }
@@ -184,4 +206,89 @@ export const useGoalStore = create((set, get) => ({
   },
 
   setSearchQuery: (query) => set({ searchQuery: query }),
+
+  // Categories State
+  categories: [],
+  isCategoriesLoading: true,
+  unsubscribeCategories: null,
+  hasSeededCategories: false,
+
+  initializeCategories: () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(collection(db, "goalCategories"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const catData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Seed defaults if empty and haven't seeded yet
+      if (snapshot.empty && !get().hasSeededCategories) {
+        set({ hasSeededCategories: true });
+        const defaults = [
+          { key: "work", name: "Work", color: "text-cyan-400 border-cyan-400/20 bg-cyan-400/10" },
+          { key: "kuliah", name: "Kuliah", color: "text-indigo-400 border-indigo-400/20 bg-indigo-400/10" },
+          { key: "home", name: "Home", color: "text-amber-200 border-amber-400/20 bg-amber-400/10" },
+        ];
+        
+        try {
+          const batch = writeBatch(db);
+          defaults.forEach(cat => {
+            // Use deterministic ID to prevent duplicates
+            const catRef = doc(db, "goalCategories", `${user.uid}_${cat.key}`);
+            batch.set(catRef, {
+              name: cat.name,
+              color: cat.color,
+              userId: user.uid,
+              createdAt: serverTimestamp(),
+            });
+          });
+          await batch.commit();
+        } catch (error) {
+          console.error("Error seeding categories:", error);
+          set({ hasSeededCategories: false });
+        }
+        return; 
+      }
+
+      set({ categories: catData, isCategoriesLoading: false });
+    });
+
+    set({ unsubscribeCategories: unsubscribe });
+  },
+
+  addCategory: async (category) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      await addDoc(collection(db, "goalCategories"), {
+        ...category,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error adding category:", error);
+    }
+  },
+
+  updateCategory: async (id, updatedCategory) => {
+    try {
+      const catRef = doc(db, "goalCategories", id);
+      await updateDoc(catRef, updatedCategory);
+    } catch (error) {
+      console.error("Error updating category:", error);
+    }
+  },
+
+  deleteCategory: async (id) => {
+    try {
+      const catRef = doc(db, "goalCategories", id);
+      await deleteDoc(catRef);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+    }
+  },
 }));
